@@ -1,9 +1,10 @@
 ### Jetlag Tracker
 
-This is a demo of data-driven line-color that visualizes jetlag on flights.
+This is a map displaying geodesic flight paths from geocoded user locations on a google spreadheet.  The addresses inside the sheet are populated with a google form.
 
-Demo: https://www.mapbox.com/bites/00300/
+Spreadsheet: https://docs.google.com/spreadsheets/d/1KKcO6Ui0dUsgmnkTqn8csgjbDFXkCAdatKAKa7QZkkU/edit#gid=907905743
 
-Blog: https://www.mapbox.com/blog/track-your-jetlag-with-data-driven-line-color/
+Form: 
+https://docs.google.com/forms/d/e/1FAIpQLSfxxvFrDwzriuOqjMYnW6A0zTEceuOUdxvOfNCfJ3jsBdeYyA/viewform
 
-Author: Dana Sulit @dasulit
+Author: Noah Huntington @remmi11
