@@ -52,7 +52,7 @@
                     console.log('var ' + place.Name + ' = [' + origin.lat + ', ' + origin.lng + '];');
 
                     var geodesic = L.geodesic([[origin, orleans]], {
-                        weight: 3,
+                        weight: 0.5,
                         opacity: 1,
                         steps: 50
                     }).addTo(fg).addTo(map);
