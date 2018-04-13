@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset='utf-8' />
+    <title>Jetlag Visualization</title>
+    <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
+    <link href='https://api.tiles.mapbox.com/mapbox-gl-js/v0.25.1/mapbox-gl.css' rel='stylesheet' />
+    <link href='https://www.mapbox.com/base/latest/base.css' rel='stylesheet' />
+    <link rel="stylesheet" href="awesomplete.css" />
+    <script src="awesomplete.js" async></script>
+    <script src='https://api.tiles.mapbox.com/mapbox-gl-js/v0.25.1/mapbox-gl.js'></script>
+    <script src='https://api.mapbox.com/mapbox.js/plugins/arc.js/v0.1.0/arc.js'></script>
+    <script src='https://npmcdn.com/@turf/turf@3.5.1/turf.min.js'></script>
+    <style>
+
+    .uppercase { text-transform: uppercase; }
+    .closer { padding-left: 0; }  
+    .flex { display: flex; }
+
+    body, p { margin: 0; }
+    header { align-items: stretch; z-index: 1; }
+    form, section { align-items: center; background: rgba(22, 25, 25, 0.7); }
+    pre { font-size: 1.5em; opacity: 0.5; padding: 0; display: inline-block; }
+
+    #map {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        top: 0;
+        z-index: -1;
+    }
+
+    .caption {
+        line-height: 1.4;
+        font-weight: 700;
+        letter-spacing: 0.1em;
+    }
+    
+    #title-block {
+        flex-wrap: wrap;
+        justify-content: space-between;
+        width: 15em;
+        color: #fff;
+        background: rgba(68, 91, 108, 0.5);
+    }
+    
+    #legend {
+        width: 100%;
+        height: 0.3em;
+        border-radius: 0.3em;
+        border: 1px #fff solid;
+        background: -webkit-linear-gradient(left, #ff4e00, #eace28, #fff, #43aaf7, #1129d3);
+    }
+    
+    #notice {
+        flex: auto;
+        justify-content: flex-end;
+    }
+
+    #itinerary div {
+        flex-wrap: wrap;
+        justify-content: flex-end;
+    }
+
+    #itinerary .caption {
+        max-width: 25em;
+    }
+    
+    #shuffle:hover {
+        cursor: pointer;
+        transform: scale(-1, 1);
+        opacity: 0.9;
+    }
+    
+    @media only screen and (max-width: 768px) {
+        header { flex-wrap: wrap; }
+        fieldset { width: 100%; }
+        #destination-form { flex: 1; display: flex; }
+        #notice, #itinerary div { justify-content: flex-start; text-align: left; }
+        #itinerary .caption { max-width: 100%; }
+    }
+
+    @media only screen and (max-width: 640px) {
+        p { font-size: 0.9em; }
+        form { width: 50%; }
+        #title-block { width: 100%; } 
+        #title-block h3, #itinerary div:first-of-type { display: none; }
+    }*/
+
+    </style>
+</head>
+
+<body>
+    <header id='filter' class='dark flex'>
+        <section id='title-block' class='uppercase pad2 flex'>
+            <h3 class='space-bottom1'>Track your jetlag</h3>
+            <div id='legend' class='space-bottom1'></div>
+            <p class='caption micro fl'>Hrs Behind</p>
+            <p class='caption micro fr'>Hrs Ahead</p>
+        </section>
+        <form class='pad2 flex'>
+            <fieldset>
+                <label>Enter origin code</label>
+                <input id='origin-filter' class='awesomeplete short stretch uppercase' type='text' placeholder='DCA, CPH, MNL' />
+            </fieldset>
+        </form>
+        <form id='destination-form' class='hidden pad2 closer flex'>
+            <fieldset>
+                <label>Enter destination code</label>
+                <input id='destination-filter' class='awesomeplete short stretch uppercase' type='text' />
+            </fieldset>
+        </form>
+        <section id='notice' class='pad2 flex'>
+            <p id='instruction'>Search for an airport to see how you are affected by jetlag.</p>
+            <div id='itinerary' class='hidden closer'>
+                <div class='uppercase flex'>
+                    <pre id='oc' class='space-bottom1'></pre>
+                    <pre id='shuffle' class='pad1x'>&#x2708;</pre>
+                    <pre id='dc' class='space-bottom1'></pre>
+                </div>
+                <div class='uppercase caption micro text-right'>
+                    <span id='d' class='quiet'></span><span class='quiet'> is </span><span id='td'></span><span id='hr'></span><span id='ts'></span><span id='o' class='quiet'></span>
+                </div>
+            </div>
+        </section>
+    </header>
+    <a class='pin-bottomleft z1 pad1' target='_blank' href='https://www.mapbox.com/'>
+      <img src='data:image/svg+xml;base64,PHN2ZyB4bWxuczpzdmc9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZlcnNpb249IjEuMSIgeD0iMCIgeT0iMCIgd2lkdGg9IjU5LjEiIGhlaWdodD0iMTgiIHZpZXdCb3g9IjAgMCA1OS4xIDE4IiBlbmFibGUtYmFja2dyb3VuZD0ibmV3IDAgMCA1OS4xMTkgMTgiIHhtbDpzcGFjZT0icHJlc2VydmUiPjxwYXRoIGQ9Ik0xLjQgMEMwLjYgMC4xIDAgMC44IDAgMS41TDAgMTMuNEMwIDE0LjIgMC43IDE0LjggMS41IDE0LjhMMy4zIDE0LjhDNCAxNC44IDQuNyAxNC4yIDQuOCAxMy40TDQuOCA5LjEgNS41IDEwLjNDNiAxMS4yIDcuNSAxMS4yIDggMTAuM0w4LjggOS4xIDguOCAxMy40QzguOCAxNC4xIDkuNSAxNC44IDEwLjIgMTQuOEwxMiAxNC44QzEyLjggMTQuOCAxMy41IDE0LjIgMTMuNSAxMy40TDEzLjUgMTMuMkMxNC41IDE0LjMgMTUuOSAxNSAxNy42IDE1TDIxLjcgMTUgMjEuNyAxNi41QzIxLjcgMTcuMyAyMi4zIDE4IDIzLjEgMThMMjQuOSAxOEMyNS43IDE4IDI2LjQgMTcuMyAyNi40IDE2LjVMMjYuNCAxNUMyOC4xIDE1IDI5LjUgMTQuNCAzMC41IDEzLjNMMzAuNSAxMy41QzMwLjUgMTMuOSAzMC43IDE0LjMgMzEgMTQuNiAzMS4zIDE0LjkgMzEuNiAxNSAzMiAxNUwzNS4zIDE1QzM3LjQgMTUgMzkuMiAxNCA0MC4zIDEyLjMgNDEuMyAxMy45IDQzLjEgMTUgNDUuMSAxNSA0Ni4yIDE1IDQ3LjEgMTQuOCA0Ny45IDE0LjMgNDguMiAxNC42IDQ4LjcgMTQuOCA0OS4xIDE0LjhMNTEuMyAxNC44QzUxLjcgMTQuOCA1Mi4yIDE0LjYgNTIuNSAxNC4yTDUzLjQgMTIuOSA1NC4zIDE0LjJDNTQuNiAxNC42IDU1LjEgMTQuOCA1NS41IDE0LjhMNTcuNyAxNC44QzU4LjggMTQuOCA1OS41IDEzLjQgNTguOSAxMi41TDU2LjMgOC45IDU4LjcgNS41QzU5LjQgNC42IDU4LjYgMy4xIDU3LjUgMy4xTDU1LjMgMy4xQzU0LjkgMy4xIDU0LjQgMy40IDU0LjEgMy44TDUzLjQgNC44IDUyLjcgMy44QzUyLjQgMy40IDUxLjkgMy4xIDUxLjQgMy4xTDQ5LjMgMy4xQzQ4LjggMy4xIDQ4LjMgMy40IDQ4IDMuOCA0Ny4yIDMuMyA0Ni4yIDMgNDUuMSAzIDQzLjEgMyA0MS4zIDQuMSA0MC4yIDUuNyAzOS4yIDQgMzcuNCAzIDM1LjMgM0wzNS4zIDEuNUMzNS4zIDEuMSAzNS4xIDAuNyAzNC44IDAuNCAzNC42IDAuMiAzNC4yIDAgMzMuOCAwTDMyIDBDMzEuMyAwIDMwLjUgMC44IDMwLjUgMS41TDMwLjUgNC43QzI5LjUgMy42IDI4LjEgMyAyNi41IDNMMjMuMSAzQzIyLjQgMyAyMS43IDMuNyAyMS43IDQuNUwyMS43IDQuOEMyMC42IDMuNyAxOS4yIDMgMTcuNiAzIDE1LjkgMyAxNC41IDMuNyAxMy41IDQuOEwxMy41IDEuNUMxMy41IDAuNyAxMi44IDAgMTIgMEwxMC42IDBDOS42IDAgOC40IDAuNCA3LjggMS40TDYuOCAzLjEgNS44IDEuNEM1LjEgMC40IDMuOSAwIDIuOSAwTDEuNSAwIDEuNCAwek0xLjUgMS41TDIuOSAxLjVDMy42IDEuNSA0LjIgMS43IDQuNSAyLjJMNi44IDYuMSA5IDIuMkM5LjMgMS43IDkuOSAxLjUgMTAuNiAxLjVMMTIgMS41IDEyIDEzLjUgMTAuMiAxMy41IDEwLjIgMy42IDYuOCA5LjUgMy4zIDMuNiAzLjMgMTMuNSAxLjUgMTMuNSAxLjUgMS41ek0zMi4xIDEuNUwzMy44IDEuNSAzMy44IDQuNUMzNC40IDQuNSAzNC44IDQuNSAzNS4zIDQuNSAzNy44IDQuNSAzOS43IDYuNCAzOS43IDkgMzkuNyAxMS42IDM3LjggMTMuNSAzNS4zIDEzLjVMMzIuMSAxMy41IDMyLjEgMS41ek0xNy42IDQuNUMyMCA0LjUgMjEuOCA2LjQgMjEuOCA5TDIxLjggMTMuNSAxNy42IDEzLjVDMTUuMSAxMy41IDEzLjQgMTEuNiAxMy40IDkgMTMuNCA2LjQgMTUuMSA0LjUgMTcuNiA0LjV6TTQ1LjEgNC41QzQ3LjUgNC41IDQ5LjUgNi41IDQ5LjUgOSA0OS41IDExLjUgNDcuNSAxMy41IDQ1LjEgMTMuNSA0Mi43IDEzLjUgNDAuNyAxMS41IDQwLjcgOSA0MC43IDYuNSA0Mi43IDQuNSA0NS4xIDQuNXpNMjMuMSA0LjVMMjYuNSA0LjVDMjguOSA0LjUgMzAuOCA2LjQgMzAuOCA5IDMwLjggMTEuNiAyOC45IDEzLjUgMjYuNSAxMy41TDI0LjkgMTMuNSAyNC45IDE2LjUgMjMuMSAxNi41IDIzLjEgNC41ek00OS4zIDQuNUw1MS40IDQuNSA1My40IDcuMyA1NS4zIDQuNSA1Ny41IDQuNSA1NC41IDguOSA1Ny43IDEzLjUgNTUuNSAxMy41IDUzLjQgMTAuNCA1MS4yIDEzLjUgNDkuMSAxMy41IDUyLjMgOC45IDQ5LjMgNC41ek0xNy42IDYuMkMxNi4yIDYuMiAxNS4xIDcuNCAxNS4xIDkgMTUuMSAxMC42IDE2LjIgMTEuOCAxNy42IDExLjhMMjAgMTEuOCAyMCA5QzIwIDcuNCAxOSA2LjIgMTcuNiA2LjJ6TTQ1LjEgNi4yQzQzLjcgNi4yIDQyLjUgNy41IDQyLjUgOSA0Mi41IDEwLjUgNDMuNyAxMS44IDQ1LjEgMTEuOCA0Ni42IDExLjggNDcuNyAxMC41IDQ3LjcgOSA0Ny43IDcuNSA0Ni42IDYuMiA0NS4xIDYuMnpNMjQuOSA2LjNMMjQuOSAxMS44IDI2LjUgMTEuOEMyNy45IDExLjggMjkuMSAxMC41IDI5LjEgOSAyOS4xIDcuNSAyOC4xIDYuMyAyNi41IDYuM0wyNC45IDYuM3pNMzMuOCA2LjNMMzMuOCAxMS44IDM1LjMgMTEuOEMzNi45IDExLjggMzggMTAuNSAzOCA5IDM4IDcuNSAzNi44IDYuMyAzNS4zIDYuM0wzMy44IDYuM3pNMTcuNiA3LjdDMTguMSA3LjcgMTguNSA4LjEgMTguNSA5TDE4LjUgMTAuMyAxNy42IDEwLjNDMTcgMTAuMyAxNi42IDkuOSAxNi42IDkgMTYuNiA4LjEgMTcgNy43IDE3LjYgNy43ek0yNi40IDcuN0MyNy4yIDcuNyAyNy42IDguNCAyNy42IDkgMjcuNiA5LjkgMjYuOSAxMC4zIDI2LjQgMTAuM0wyNi40IDcuN3pNMzUuMSA3LjdDMzUuOCA3LjcgMzYuNSA4LjMgMzYuNSA5IDM2LjUgOS44IDM1LjkgMTAuMyAzNS4xIDEwLjNMMzUuMSA3Ljd6TTQ1LjEgNy43QzQ1LjcgNy43IDQ2LjIgOC4yIDQ2LjIgOSA0Ni4yIDkuOCA0NS43IDEwLjMgNDUuMSAxMC4zIDQ0LjUgMTAuMyA0NCA5LjggNDQgOSA0NCA4LjIgNDQuNSA3LjcgNDUuMSA3Ljd6IiBvcGFjaXR5PSIwLjMiLz48cGF0aCBkPSJtMS41IDEuNSAwIDEyIDEuOCAwIDAtOS45IDMuNSA1LjkgMy41LTUuOSAwIDkuOSAxLjggMCAwLTEyLTEuNCAwQzkuOSAxLjUgOS4zIDEuNyA5IDIuMkw2LjggNi4xIDQuNSAyLjJDNC4yIDEuNyAzLjYgMS41IDIuOSAxLjVMMS41IDEuNVptMzAuNiAwIDAgMTIgMy4zIDBjMi40IDAgNC40LTEuOSA0LjQtNC41IDAtMi42LTEuOS00LjUtNC40LTQuNS0wLjUgMC0wLjkgMC0xLjUgMGwwLTMtMS43IDB6TTE3LjYgNC41Yy0yLjQgMC00LjIgMS45LTQuMiA0LjUgMCAyLjYgMS44IDQuNSA0LjIgNC41bDQuMiAwTDIxLjggOWMwLTIuNi0xLjctNC41LTQuMi00LjV6bTI3LjYgMGMtMi40IDAtNC40IDItNC40IDQuNSAwIDIuNSAyIDQuNSA0LjQgNC41IDIuNCAwIDQuMy0yIDQuMy00LjUgMC0yLjUtMS45LTQuNS00LjMtNC41em0tMjIgMCAwIDEyIDEuOCAwIDAtMyAxLjYgMGMyLjQgMCA0LjMtMS45IDQuMy00LjUgMC0yLjYtMS45LTQuNS00LjMtNC41bC0zLjMgMHptMjYuMiAwIDMgNC40LTMuMiA0LjYgMi4xIDAgMi4yLTMuMSAyLjEgMy4xIDIuMiAwTDU0LjUgOC45IDU3LjUgNC41IDU1LjMgNC41IDUzLjQgNy4zIDUxLjQgNC41IDQ5LjMgNC41Wk0xNy42IDYuMkMxOSA2LjIgMjAgNy40IDIwIDlsMCAyLjgtMi40IDBjLTEuNCAwLTIuNC0xLjItMi40LTIuOCAwLTEuNiAxLTIuOCAyLjQtMi44em0yNy42IDBjMS40IDAgMi42IDEuMiAyLjYgMi44IDAgMS41LTEuMiAyLjgtMi42IDIuOEM0My43IDExLjggNDIuNSAxMC41IDQyLjUgOWMwLTEuNSAxLjItMi44IDIuNi0yLjh6bS0yMC4yIDAgMS42IDBjMS42IDAgMi42IDEuMyAyLjYgMi44IDAgMS41LTEuMSAyLjgtMi42IDIuOGwtMS42IDAgMC01LjV6bTkgMCAxLjUgMGMxLjUgMCAyLjYgMS4zIDIuNiAyLjggMCAxLjUtMSAyLjgtMi42IDIuOGwtMS41IDAgMC01LjV6IiBmaWxsPSIjZmZmIi8+PC9zdmc+' alt='Mapbox' />
+    </a>
+    <div id='map'></div>
+    <script>
+    mapboxgl.accessToken = 'pk.eyJ1IjoiZGFzdWxpdCIsImEiOiJjaXQzYmFjYmkwdWQ5MnBwZzEzZnNub2hhIn0.EDJ-lIfX2FnKhPw3nqHcqg';
+    var map = new mapboxgl.Map({
+        container: 'map',
+        style: 'mapbox://styles/dasulit/citzajj5l000f2in517jtv86e',
+        center: [-40, 40],
+        zoom: 1.5,
+        minZoom: 1.4
+    });
+
+    var empty = {
+        'type': 'FeatureCollection',
+        'features': []
+    }
+
+    if (window.location.search.indexOf('embed') !== -1) map.scrollZoom.disable();
+
+    map.on('load', function() {
+
+        mapboxgl.util.getJSON('routes.geojson', function(err, resp) {
+
+            // initialize sources as empty
+            map.addSource('routes', {
+                'type': 'geojson',
+                'data': empty
+            });
+            map.addSource('airplane', {
+                'type': 'geojson',
+                'data': empty
+            });
+
+            // add data-driven styled layer for line-color
+            map.addLayer({
+                'id': 'routes',
+                'type': 'line',
+                'source': 'routes',
+                'layout': {
+                    'line-cap': 'round',
+                    'line-join': 'round'
+                },
+                'paint': {
+                    'line-blur': 1,
+                    'line-width': 2,
+                    'line-opacity': 0.8,
+                    'line-color': {
+                        'property': 'td',
+                        'type': 'exponential',
+                        'stops': [
+                            ['-24', '#ff4e00'],
+                            ['-3', '#eace28'],
+                            ['0', 'rgba(255,255,255,0.5)'],
+                            ['3', '#43aaf7'],
+                            ['24', '#1129d3']
+                        ]
+                    }
+                }
+            });
+
+            // add circle layer for airplane
+            map.addLayer({
+                'id': 'airplane',
+                'type': 'symbol',
+                'source': 'airplane',
+                'layout': {
+                    'icon-image': 'airport-15',
+                    'icon-rotate': -90
+                }
+            });
+
+            // initialize empty objects
+            var origin = {};
+            var destination = {};
+
+            // initialize empty arrays
+            var originArcs = [];
+            var originCodes = [];
+            var destinationCodes = [];
+            var singleArcCoords = [];
+
+            // frequently used DOM elements
+            var filter = document.getElementById('filter');
+            var originFilter = document.getElementById('origin-filter');
+            var destinationFilter = document.getElementById('destination-filter')
+            var itinerary = document.getElementById('itinerary');
+            var instruction = document.getElementById('instruction');
+            var ts = document.getElementById('ts');
+            var hr = document.getElementById('hr');
+
+            // animate plane along route
+            var start;
+            function animate() {
+                var counter = Math.floor(100 * (Date.now() - start) / 2000);
+                if (counter > 99) return;
+                if (originArcs.length == 0 || singleArcCoords.length == 0) {
+                    map.getSource('airplane').setData(empty); 
+                    return;
+                }
+                map.getSource('airplane').setData({
+                    type: 'Feature',
+                    geometry: {
+                        type: 'Point',
+                        coordinates: singleArcCoords[counter]
+                    }
+                });
+                requestAnimationFrame(animate);
+            };
+
+            // reset data and messages to initial state
+            function setToEmpty() {
+                map.getSource('routes').setData(empty);
+                map.getSource('airplane').setData(empty);
+                map.flyTo({
+                    center: [-40, 40],
+                    zoom: 1.5,
+                    speed: .9
+                });
+                originArcs = [];
+                itinerary.style.display = 'none',
+                instruction.textContent = 'Search for an airport to see how you are affected by jetlag.'
+            };
+
+            // create a series of arcs originating from a searched code
+            function setArcs() {
+                setToEmpty();
+                singleArcCoords = [];
+                var originLinestrings = resp.features.filter(function(e) {
+                    return e.properties.oc === origin;
+                });
+                instruction.textContent = '';
+                if (originLinestrings.length == 0) {
+                    instruction.textContent = 'No airport was found. Try another search!';
+                    return;
+                } else {
+                    for (i = 0; i < originLinestrings.length; i++) {
+                        var current = originLinestrings[i];
+                        var start = { x: current.geometry.coordinates[0][0], y: current.geometry.coordinates[0][1] };
+                        var end = { x: current.geometry.coordinates[1][0], y: current.geometry.coordinates[1][1] };
+                        var generator = new arc.GreatCircle(start, end, {
+                            'oc': current.properties.oc,
+                            'o': current.properties.o,
+                            'td': current.properties.td,
+                            'dc': current.properties.dc,
+                            'd': current.properties.d
+                        });
+                        var line = generator.Arc(100, { offset: 20 });
+                        originArcs.push(line.json());
+                    };
+                    if (originArcs.length == 0) { originArcs.push(originLinestrings[0]); };
+                    map.getSource('routes').setData({ 'type': 'FeatureCollection', 'features': originArcs });
+                    map.flyTo({ center: originArcs[0].geometry.coordinates[0], zoom: 2 });
+                    instruction.textContent = 'Enter your destination, or click on a route!';
+                    document.getElementById('destination-form').style.display = 'flex';
+                    for (i = 0; i < originArcs.length; i++) {
+                        var currentCode = originArcs[i].properties.dc;
+                        if (destinationCodes.indexOf(currentCode) == -1) {
+                            destinationCodes.push(currentCode);
+                        };
+                    };
+                };
+            };
+
+            // focus on a single route originating and terminating at respective searched codes
+            function setRoute() {
+                var singleArc = originArcs.filter(function(e) {
+                    return e.properties.dc === destination;
+                });
+                var bounds = turf.bbox({ 'type': 'FeatureCollection', 'features': singleArc });
+                if (!singleArc.length) {
+                    setToEmpty();
+                    instruction.textContent = 'No direct flight route was found. Try another search!';
+                } else {
+                    map.getSource('routes').setData(singleArc[0]);
+                    if (singleArc[0].geometry.coordinates[0].length > 2) {
+                        singleArcCoords = singleArc[0].geometry.coordinates[0].slice(1).concat(singleArc[0].geometry.coordinates[1].slice(1));
+                    } else {
+                        singleArcCoords = singleArc[0].geometry.coordinates;
+                    };
+                    if (singleArcCoords[0][0] < singleArcCoords[1][0]) {
+                        map.setLayoutProperty('airplane','icon-rotate', 90);
+                    } else if (singleArcCoords[0][0] > singleArcCoords[1][0]) {
+                        map.setLayoutProperty('airplane', 'icon-rotate', -90);
+                    };
+                    map.fitBounds(bounds, {padding: 110});
+                    start = Date.now();
+                    animate();
+                    instruction.textContent = '';
+                    itinerary.style.display = 'inline';
+                    document.getElementById('oc').textContent = singleArc[0].properties.oc;
+                    document.getElementById('o').textContent = singleArc[0].properties.o;
+                    document.getElementById('dc').textContent = singleArc[0].properties.dc;
+                    document.getElementById('d').textContent = singleArc[0].properties.d;
+                    document.getElementById('td').textContent = Math.abs(singleArc[0].properties.td);
+                    if (singleArc[0].properties.td >= 0 ) {
+                        ts.textContent = 'ahead of ';
+                    } else if (singleArc[0].properties.td < 0 ) {
+                        ts.textContent = 'behind ';
+                    };
+                    if (Math.abs(singleArc[0].properties.td) == 1) {
+                        hr.textContent = ' hour ';
+                    } else {
+                        hr.textContent = ' hours ';
+                    };
+                };
+            };
+
+            // filter from text input
+            filter.addEventListener('keyup', function(e) {
+                var input = e.target;
+                if (input.id == 'origin-filter') {
+                    origin = input.value.trim().toUpperCase();
+                };
+                if (input.id == 'destination-filter') {
+                    destination = input.value.trim().toUpperCase();
+                };
+                if (origin.length >= 3) {
+                    setArcs();
+                    if (destination.length >= 3) {
+                        setRoute();
+                    }
+                } else {
+                    setToEmpty();
+                };
+            });
+
+            // don't refresh page when hitting enter in input
+            filter.addEventListener('submit', function(e) { e.preventDefault(); });
+
+            // focus on a route when clicked
+            map.on('click', function(e) {
+                var features = map.queryRenderedFeatures(
+                    [
+                        [e.point.x - 5, e.point.y - 5],
+                        [e.point.x + 5, e.point.y + 5]
+                    ], {
+                        layers: ['routes']
+                    });
+                if (!features.length) { return; };
+                destination = features[0].properties.dc;
+                destinationFilter.value = destination;
+                setRoute();
+            });
+
+            // UI indicator when hovering over route
+            map.on('mousemove', function(e) {
+                var features = map.queryRenderedFeatures(
+                    [
+                        [e.point.x - 5, e.point.y - 5],
+                        [e.point.x + 5, e.point.y + 5]
+                    ], {
+                        layers: ['routes']
+                    });
+                map.getCanvas().style.cursor = (features.length) ? 'pointer' : '';
+            });
+
+            // autocomplete using awesomecomplete
+            for (i = 0; i < resp.features.length; i++) {
+                var currentCode = resp.features[i].properties.oc;
+                if (originCodes.indexOf(currentCode) == -1) {
+                    originCodes.push(currentCode);
+                };
+            };
+            new Awesomplete(originFilter, {
+                list: originCodes,
+                minChars: 1,
+                filter: Awesomplete.FILTER_STARTSWITH
+            });
+            new Awesomplete(destinationFilter, {
+                list: destinationCodes,
+                minChars: 1,
+                filter: Awesomplete.FILTER_STARTSWITH
+            });
+            window.addEventListener('awesomplete-selectcomplete', function(e){
+              if (e.target.id == 'origin-filter') {
+                    origin = e.target.value;
+                    setArcs();
+                } else if (e.target.id == 'destination-filter') {
+                    destination = e.target.value;
+                    setRoute();
+                };
+            });
+
+            // reverse route when airplane is clicked
+            document.getElementById('shuffle').addEventListener('click', function(e) {
+                originFilter.value = destination;
+                destinationFilter.value = origin;
+                origin = [destination, destination = origin][0];
+                setArcs();
+                setRoute();
+            });
+        });
+    });
+    </script>
+</body>
+
+</html>
