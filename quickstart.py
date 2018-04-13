@@ -11,10 +11,10 @@ scope = ['https://spreadsheets.google.com/feeds',
          'https://www.googleapis.com/auth/drive']
 
 #use this on pythonanywhere
-#credentials = ServiceAccountCredentials.from_json_keyfile_name('/home/remmi11/lovelytics/client_secret.json', scope)
+credentials = ServiceAccountCredentials.from_json_keyfile_name('/home/remmi11/lovelytics/client_secret.json', scope)
 
 #use this for testing locally
-credentials = ServiceAccountCredentials.from_json_keyfile_name('client_secret.json', scope)
+# credentials = ServiceAccountCredentials.from_json_keyfile_name('client_secret.json', scope)
 
 
 gc = gspread.authorize(credentials)
@@ -26,42 +26,32 @@ def updateAddress():
 
     count = 1
     fullList = []
-    cities = worksheet.col_values(3)
-    states = worksheet.col_values(4)
-    countries = worksheet.col_values(5)
+    cities = worksheet.col_values(6)
+    states = worksheet.col_values(7)
+    countries = worksheet.col_values(8)
     #x = zip(cities, states, countries)
     for x in zip(cities, states, countries):
-        cellAddress = 'F%s' % (count)
+        cellAddress = 'J%s' % (count)
         valueAddress = x[0] + ', ' + x[1]+ ', ' + x[2]
         worksheet.update_acell(cellAddress, valueAddress)
         count += 1
 
-    # for city in cities:
-    #     print count
-    #     print city
-    #     print ""
-        #worksheet.update_acell(cellLat, valueLat)
-    # state = worksheet.col_values(4)
-    # country = worksheet.col_values(5)
-    # full_address = city + ", " +  state + ", " +  country
-    #worksheet.update_acell(cellLat, valueLat)
-
 
 def geocodeAddresses():
 
-    values_list = worksheet.col_values(6)
+    values_list = worksheet.col_values(10)
 
     count = 2
     for value in values_list:
-        if value != 'Home City, Home State, Home Country':
-            #print value
+        if value != 'City, State, Country':
+            print value
             location = geolocator.geocode(value)
             #print location.longitude
             #print location.latitude
 
-            cellLat = 'G%s' % (count)
+            cellLat = 'K%s' % (count)
             #print cellLat
-            cellLng = 'H%s' % (count)
+            cellLng = 'L%s' % (count)
             #print cellLng
 
             # valueLat = latlng[0]
@@ -75,7 +65,7 @@ def geocodeAddresses():
 
             #print ""
             count += 1
-            time.sleep(.5)
+            #time.sleep(.5)
 
 
 

@@ -48,7 +48,7 @@
                     var place = sheet[i];
                     marker = L.marker([place.lat, place.lon])
                         .addTo(fg)
-                        .bindPopup(place.Name)
+                        .bindPopup(place.City)
                     origin = L.latLng(place.lat, place.lon);
 
                     console.log('var ' + place.Name + ' = [' + origin.lat + ', ' + origin.lng + '];');
