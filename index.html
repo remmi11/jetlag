@@ -9,6 +9,10 @@
     <link href='https://api.mapbox.com/mapbox.js/v3.1.1/mapbox.css' rel='stylesheet' />
     <script src='https://cdnjs.cloudflare.com/ajax/libs/tabletop.js/1.5.1/tabletop.min.js'></script>
     <script src="Leaflet.Geodesic.js"></script>
+    <script src='https://api.mapbox.com/mapbox.js/plugins/leaflet-markercluster/v1.0.0/leaflet.markercluster.js'></script>
+    <link href='https://api.mapbox.com/mapbox.js/plugins/leaflet-markercluster/v1.0.0/MarkerCluster.css' rel='stylesheet' />
+    <link href='https://api.mapbox.com/mapbox.js/plugins/leaflet-markercluster/v1.0.0/MarkerCluster.Default.css' rel='stylesheet'
+    />
 
 
     <style>
@@ -35,6 +39,7 @@
         L.mapbox.accessToken = 'pk.eyJ1IjoibHVrZXRlY2giLCJhIjoiY2plOHVlOGJlMGZoazJxbGV2dzVpN29pZCJ9.gRAKacJQxFOUFsllGTHuew';
         var map = L.mapbox.map('map', 'mapbox.dark')
         var code = "1KKcO6Ui0dUsgmnkTqn8csgjbDFXkCAdatKAKa7QZkkU"
+        var markers = new L.MarkerClusterGroup();
 
         var fg = L.featureGroup().addTo(map);
         var orleans = new L.LatLng(29.941514, -90.063567);
@@ -44,10 +49,21 @@
             callback: function (sheet, tabletop) {
                 for (var i in sheet) {
                     var place = sheet[i];
-                    marker = L.marker([place.lat, place.lon])
-                        .addTo(fg)
-                        .bindPopup(place.City)
+                    // marker = L.marker([place.lat, place.lon])
+                    //     .addTo(fg)
+                    //     .bindPopup(place.City)
                     origin = L.latLng(place.lat, place.lon);
+
+                    //
+                    //var a = addressPoints[i];
+                    var title = place.City;
+                    var marker = L.marker(origin, {
+                        icon: L.mapbox.marker.icon({ 'marker-symbol': 'airport', 'marker-color': '0044FF' }),
+                        title: title
+                    }).addTo(fg);
+                    marker.bindPopup(title);
+                    markers.addLayer(marker);
+                    //
 
                     //console.log('var ' + place.Name + ' = [' + origin.lat + ', ' + origin.lng + '];');
 
