@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset=utf-8 />
+    <title>Lovelytics Map</title>
+    <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
+
+    <!-- mapbox js -->
+    <!-- <script src='https://api.mapbox.com/mapbox.js/v3.1.1/mapbox.js'></script>
+    <link href='https://api.mapbox.com/mapbox.js/v3.1.1/mapbox.css' rel='stylesheet' /> -->
+    <!-- <script src="Leaflet.Geodesic.js"></script> -->
+
+
+    <!-- mapbox gl js -->
+    <link href='https://api.tiles.mapbox.com/mapbox-gl-js/v0.44.2/mapbox-gl.css' rel='stylesheet' />
+    <script src='https://api.mapbox.com/mapbox.js/plugins/arc.js/v0.1.0/arc.js'></script>
+
+    <!-- <script src='https://api.tiles.mapbox.com/mapbox.js/plugins/turf/v2.0.0/turf.min.js' charset='utf-8'></script> -->
+
+    <script src='https://cdnjs.cloudflare.com/ajax/libs/tabletop.js/1.5.1/tabletop.min.js'></script>
+
+    <script src='https://api.tiles.mapbox.com/mapbox-gl-js/v0.44.2/mapbox-gl.js'></script>
+
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+        }
+
+        #map {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 100%;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id='map'></div>
+    <!-- jQuery is required for this example. -->
+    <script src='https://api.tiles.mapbox.com/mapbox.js/plugins/turf/v2.0.0/turf.min.js' charset='utf-8'></script>
+
+    <script src='https://code.jquery.com/jquery-1.11.0.min.js'></script>
+    <script>
+        //L.mapbox.accessToken = 'pk.eyJ1IjoibHVrZXRlY2giLCJhIjoiY2plOHVlOGJlMGZoazJxbGV2dzVpN29pZCJ9.gRAKacJQxFOUFsllGTHuew';
+        // var map = L.mapbox.map('map', 'mapbox.dark')
+
+        mapboxgl.accessToken = 'pk.eyJ1IjoibHVrZXRlY2giLCJhIjoiY2plOHVlOGJlMGZoazJxbGV2dzVpN29pZCJ9.gRAKacJQxFOUFsllGTHuew';
+        var map = new mapboxgl.Map({
+            container: 'map',
+            style: 'mapbox://styles/mapbox/dark-v9'
+            // zoom: 13,
+            // center: [30.053206, -89.934873]
+        });
+
+
+        var code = "1KKcO6Ui0dUsgmnkTqn8csgjbDFXkCAdatKAKa7QZkkU"
+
+        //var fg = L.featureGroup().addTo(map);
+        //var orleans = new L.LatLng(30.053206, -89.934873);
+        var orleans = [-89.934873, 30.053206];
+        var origin;
+        var route;
+        var arc;
+        // Tabletop.init({
+        //     key: code,
+        //     callback: function (sheet, tabletop) {
+        //         for (var i in sheet) {
+        //             var place = sheet[i];
+        //             marker = L.marker([place.lat, place.lon])
+        //                 .addTo(fg)
+        //                 .bindPopup(place.City)
+        //             origin = L.latLng(place.lat, place.lon);
+
+        //             console.log('var ' + place.Name + ' = [' + origin.lat + ', ' + origin.lng + '];');
+
+        //             var geodesic = L.geodesic([[origin, orleans]], {
+        //                 weight: 0.8,
+        //                 color: '#3b96f1',
+        //                 opacity: 1,
+        //                 steps: 50
+        //             }).addTo(fg).addTo(map);
+
+        //         }
+        //         map.fitBounds(fg.getBounds());
+        //     },
+        //     simpleSheet: true
+        // })
+        Tabletop.init({
+            key: code,
+            callback: function (sheet, tabletop) {
+                for (var i in sheet) {
+                    var place = sheet[i];
+
+                    origin = [place.lon, place.lat];
+
+                    // A simple line from origin to orleans.
+                    route = {
+                        "type": "FeatureCollection",
+                        "features": [{
+                            "type": "Feature",
+                            "geometry": {
+                                "type": "LineString",
+                                "coordinates": [
+                                    origin,
+                                    orleans
+                                ]
+                            }
+                        }]
+                    };
+
+                    // Calculate the distance in kilometers between route start/end point.
+                    var lineDistance = turf.lineDistance(route.features[0], 'kilometers');
+
+                    arc = [];
+
+                    // Draw an arc between the `origin` & `orleans` of the two points
+                    for (var i = 0; i < lineDistance; i++) {
+                        var segment = turf.along(route.features[0], i / 1000 * lineDistance, 'kilometers');
+                        arc.push(segment.geometry.coordinates);
+                    }
+
+                    // Update the route with calculated arc coordinates
+                    route.features[0].geometry.coordinates = arc;
+
+                    // Used to increment the value of the point measurement against the route.
+                    var counter = 0;
+
+                    // Add a source and layer displaying a point which will be animated in a circle.
+                    map.addSource('route', {
+                        "type": "geojson",
+                        "data": route
+                    });
+
+
+                    map.addLayer({
+                        "id": "route",
+                        "source": "route",
+                        "type": "line",
+                        "paint": {
+                            "line-width": 2,
+                            "line-color": "#007cbf"
+                        }
+                    });
+                    //map.fitBounds(fg.getBounds());
+                }
+            },
+            simpleSheet: true
+
+        });
+
+    </script>
+
+</body>
+
+</html>
