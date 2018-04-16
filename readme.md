@@ -1,4 +1,4 @@
-### Jetlag Tracker
+### Lovelytics Google Form Map
 
 This is a map displaying geodesic flight paths from geocoded user locations on a google spreadheet.  The addresses inside the sheet are populated with a google form.
 
