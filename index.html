@@ -60,7 +60,7 @@
                     var marker = L.marker(origin, {
                         icon: L.mapbox.marker.icon({ 'marker-symbol': 'airport', 'marker-color': '0044FF' }),
                         title: title
-                    }).addTo(fg);
+                    });
                     marker.bindPopup(title);
                     markers.addLayer(marker);
                     //
@@ -76,6 +76,7 @@
 
                 }
                 map.fitBounds(fg.getBounds());
+                map.addLayer(markers);
             },
             simpleSheet: true
         })
